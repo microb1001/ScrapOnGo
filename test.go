@@ -1,1 +1,1 @@
-package ScrapOnGo
+package main
