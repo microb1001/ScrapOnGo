@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"io/ioutil"
+	"log"
 )
 
 type Property struct {
@@ -25,23 +26,20 @@ type Response struct {
 }
 
 type Rdf_Rdf struct {
-	XMLName xml.Name `xml:"RDF"`
-	//NS1   string     `xml:"xmlns:NS1,attr"`
-	//NC   string     `xml:"xmlns:NC,attr"`
-	//RDF   string     `xml:"xmlns:RDF,attr"`
-	RDF_Descriptions []RDF_Description `xml:"Description"`
+	XMLName xml.Name `xml:"http://www.w3.org/1999/02/22-rdf-syntax-ns# RDF"`
+	RDF_Descriptions []RDF_Description `xml:"http://www.w3.org/1999/02/22-rdf-syntax-ns# Description"`
 }
 
 type RDF_Description struct {
-	Properties []Property `xml:"PROPERTY"`
-	About   string     `xml:"about,attr"`
-	Id      string     `xml:"id,attr"`
-	Type    string     `xml:"type,attr"`
-	Title   string     `xml:"title,attr"`
-	Chars   string     `xml:"chars,attr"`
-	Comment string     `xml:"comment,attr"`
-	Icon    string     `xml:"icon,attr"`
-	Source  string     `xml:"source,attr"`
+	//XMLName xml.Name `xml:"http://www.w3.org/1999/02/22-rdf-syntax-ns# Description"`
+	About   string     `xml:"http://www.w3.org/1999/02/22-rdf-syntax-ns# about,attr"`
+	Id      string     `xml:"http://amb.vis.ne.jp/mozilla/scrapbook-rdf# id,attr"`
+	Type    string     `xml:"http://amb.vis.ne.jp/mozilla/scrapbook-rdf# type,attr"`
+	Title   string     `xml:"http://amb.vis.ne.jp/mozilla/scrapbook-rdf# title,attr"`
+	Chars   string     `xml:"http://amb.vis.ne.jp/mozilla/scrapbook-rdf# chars,attr"`
+	Comment string     `xml:"http://amb.vis.ne.jp/mozilla/scrapbook-rdf# comment,attr"`
+	Icon    string     `xml:"http://amb.vis.ne.jp/mozilla/scrapbook-rdf# icon,attr"`
+	Source  string     `xml:"http://amb.vis.ne.jp/mozilla/scrapbook-rdf# source,attr"`
 }
 func main() {
 	// Open our xmlFile
@@ -72,6 +70,13 @@ func main() {
 	if err2 != nil {
 		panic(err2)
 	}
-	fmt.Printf("%+v\n", res)
-	fmt.Printf("%+v\n", res1)
+	buf, err := xml.MarshalIndent(&res1,"", "   ")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(string(buf))
+
+	//fmt.Printf("%+v\n", res)
+	//fmt.Printf("%+v\n", res1)
 }
