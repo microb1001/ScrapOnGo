@@ -4,51 +4,16 @@ import (
 	"encoding/xml"
 	"fmt"
 	"os"
-	"io/ioutil"
 	"log"
+	"io"
 )
 
-type Property struct {
-	Name  string `xml:"name,attr"`
-	Value string `xml:",chardata"`
+type RdfType struct {
+	XMLName      xml.Name          `xml:"RDF:RDF"`
+	Descriptions []DescriptionType `xml:"RDF:Description"`
 }
 
-type Object struct {
-	Properties []Property `xml:"PROPERTY"`
-	Basetype   string     `xml:"basetype,attr"`
-	Name       string     `xml:"name,attr"`
-	Oid        int        `xml:"oid,attr"`
-}
-
-type Response struct {
-	XMLName xml.Name `xml:"RESPONSE"`
-	Objects []Object `xml:"OBJECT"`
-}
-
-type Rdf_Rdf struct {
-	XMLName xml.Name `xml:"http://www.w3.org/1999/02/22-rdf-syntax-ns# RDF"`
-	RDF_Descriptions []RDF_Description `xml:"http://www.w3.org/1999/02/22-rdf-syntax-ns# Description"`
-	Other   []string     `xml:",any"`
-}
-
-type Rdf_RdfOut struct {
-	XMLName xml.Name `xml:"RDF:RDF"`
-	RDF_Descriptions []RDF_DescriptionOut `xml:"RDF:Description"`
-	Other   []string     `xml:",any"`
-}
-type RDF_Description struct {
-	//XMLName xml.Name `xml:"http://www.w3.org/1999/02/22-rdf-syntax-ns# Description"`
-	About   string     `xml:"http://www.w3.org/1999/02/22-rdf-syntax-ns# about,attr"`
-	Id      string     `xml:"http://amb.vis.ne.jp/mozilla/scrapbook-rdf# id,attr"`
-	Type    string     `xml:"http://amb.vis.ne.jp/mozilla/scrapbook-rdf# type,attr"`
-	Title   string     `xml:"http://amb.vis.ne.jp/mozilla/scrapbook-rdf# title,attr"`
-	Chars   string     `xml:"http://amb.vis.ne.jp/mozilla/scrapbook-rdf# chars,attr"`
-	Comment string     `xml:"http://amb.vis.ne.jp/mozilla/scrapbook-rdf# comment,attr"`
-	Icon    string     `xml:"http://amb.vis.ne.jp/mozilla/scrapbook-rdf# icon,attr"`
-	Source  string     `xml:"http://amb.vis.ne.jp/mozilla/scrapbook-rdf# source,attr"`
-	//Other   string     `xml:",any"`
-}
-type RDF_DescriptionOut struct {
+type DescriptionType struct {
 	//XMLName xml.Name `xml:"http://www.w3.org/1999/02/22-rdf-syntax-ns# Description"`
 	About   string     `xml:"RDF:about,attr"`
 	Id      string     `xml:"NS2:id,attr"`
@@ -58,92 +23,112 @@ type RDF_DescriptionOut struct {
 	Comment string     `xml:"NS2:comment,attr"`
 	Icon    string     `xml:"NS2:icon,attr"`
 	Source  string     `xml:"NS2:source,attr"`
-	//Other   string     `xml:",any"`
 }
-type Redirect struct {
-	Title string `xml:"title,attr"`
-}
+type UrnType string
 
-type Page struct {
-	Title string `xml:"title"`
-	Redir Redirect `xml:"redirect"`
-	Text string `xml:"revision>text"`
-}
+var DictDesc map[UrnType] DescriptionType = make(map[UrnType] DescriptionType)
+var DictSeq map[UrnType] []UrnType = make(map[UrnType] []UrnType)
+
+type Name_x2 struct{old xml.Name;new xml.Name;attricnt int}
+
+var res RdfType
+var urnSeq UrnType = "ERR"
+
+// Пространства имен
+const SpaceNS1="http://amb.vis.ne.jp/mozilla/scrapbook-rdf#"
+const SpaceNC="http://home.netscape.com/NC-rdf#"
+const SpaceRDF="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+// Токены
+var TnNil=xml.Name{"",""}
+var TnRDF=xml.Name{SpaceRDF,"RDF"}
+var TnDe=xml.Name{SpaceRDF,"Description"}
+var TnSe=xml.Name{SpaceRDF,"Seq"}
+var TnLi=xml.Name{SpaceRDF,"li"}
+var TnAb=xml.Name{SpaceRDF,"about"}
+var TnId=xml.Name{SpaceNS1,"id"}
+var TnTy=xml.Name{SpaceNS1,"type"}
+var TnTi=xml.Name{SpaceNS1,"title"}
+var TnCh=xml.Name{SpaceNS1,"chars"}
+var TnCo=xml.Name{SpaceNS1,"comment"}
+var TnIc=xml.Name{SpaceNS1,"icon"}
+var TnSo=xml.Name{SpaceNS1,"source"}
+var TnRe=xml.Name{SpaceRDF,"resource"}
+
 func main() {
-	// Open our xmlFile
-	xmlFile, err1 := os.Open("scrapbook.rdf")
-	// if we os.Open returns an error then handle it
-	if err1 != nil {
-		fmt.Println(err1)
-	}
+	xmlFile, errOs := os.Open("scrapbook.rdf")
+	if errOs != nil { fmt.Println(errOs)}
 	defer xmlFile.Close()
-	byteValue, _ := ioutil.ReadAll(xmlFile)
+	//byteValue, _ := ioutil.ReadAll(xmlFile)
 
-	data := []byte(`<RESPONSE>
-    <OBJECT basetype="status" name="status" oid="1">
-      <PROPERTY name="response-type">success</PROPERTY>
-      <PROPERTY name="response-type-numeric">0</PROPERTY>
-      <PROPERTY name="response">0f738648db95bb1f6ca37f6b8b5aafa8</PROPERTY>
-      <PROPERTY name="return-code">1</PROPERTY>
-    </OBJECT>
-</RESPONSE>`)
-
-	var res Response
-	var res1 Rdf_Rdf
-	var res2 Rdf_RdfOut
-	err := xml.Unmarshal(data, &res)
-	if err != nil {
-		panic(err)
-	}
-	err2 := xml.Unmarshal(byteValue, &res1)
-	if err2 != nil {
-		panic(err2)
-	}
-	for _, v := range res1.RDF_Descriptions {
-		res2.RDF_Descriptions=append(res2.RDF_Descriptions,RDF_DescriptionOut(v))
-	}
-	//res2.RDF_Descriptions[1]=RDF_DescriptionOut(res1.RDF_Descriptions[1])
-	buf, err := xml.MarshalIndent(&res2,"", "   ")
-	if err != nil {
-		log.Fatal(err)
-	}
-	_=buf
-//	fmt.Println(string(buf))
-
-	xmlFile.Close()
-	xmlFile, err3 := os.Open("scrapbook.rdf")
-	if err3 != nil {
-		fmt.Println("Error opening file:", err)
-		return
-	}
-	decoder1 := xml.NewDecoder(xmlFile)
+	decoder := xml.NewDecoder(xmlFile)
+	var up  = []xml.Name{TnNil}
 	for {
-		// Read tokens from the XML document in a stream.
-		t, _ := decoder1.Token()
-		if t == nil {
-			break
-		}
-		// Inspect the type of the token just read.
+		t, err := decoder.Token()
+		if err != nil && err != io.EOF {fmt.Println(err); panic(err)}
+		if t== nil {break} // Конец файла
 
-		switch se := t.(type) {
+		switch tt := t.(type) {
 		case xml.StartElement:
-			fmt.Println("StartElement", se.Name)
-			// If we just read a StartElement token
-			// ...and its name is "page"
-			if se.Name.Local == "page" {
-				var p Page
-				// decode a whole chunk of following XML into the
-				// variable p which is a Page (se above)
-				decoder1.DecodeElement(&p, &se)
-				// Do some stuff with the page.
-				//p.Title = CanonicalizeTitle(p.Title)
-				//...
+			var cs  = Name_x2{up[len(up)-1],tt.Name,len(tt.Attr)}
+			up=append(up,tt.Name)
+
+			switch cs {
+			case Name_x2{TnNil,TnRDF,3}:
+			case Name_x2{TnRDF,TnDe,8}:
+				var urn UrnType
+				var ee DescriptionType
+				for _, a := range tt.Attr{
+					switch a.Name {
+					case TnAb: ee.About= a.Value; urn = UrnType(a.Value)
+					case TnId: ee.Id= a.Value
+					case TnTy: ee.Type= a.Value
+					case TnTi: ee.Title= a.Value
+					case TnCh: ee.Chars= a.Value
+					case TnCo: ee.Comment= a.Value
+					case TnIc: ee.Icon= a.Value
+					case TnSo: ee.Source= a.Value
+					default: fmt.Println(a.Name);panic("Неопознанный тег в Description")
+					}
+				}
+				if _,ok:=DictDesc[urn];ok {panic("Дубликат description "+string(urn))}
+				DictDesc[urn]=ee
+			case Name_x2{TnRDF,TnSe,1}:
+				if tt.Attr[0].Name!=TnAb {fmt.Println("Ошибка Seq: ", tt)}
+				urnSeq=UrnType(tt.Attr[0].Value)
+				if len(DictSeq[urnSeq])!=0 {fmt.Println("Дублирование Seq: ", tt)}
+
+			case Name_x2{TnSe,TnLi,1}:
+				if tt.Attr[0].Name!=TnRe {fmt.Println("Ошибка Li: ", tt)}
+				DictSeq[urnSeq]=append(DictSeq[urnSeq], UrnType(tt.Attr[0].Value))
+			default:
+			fmt.Println("Нераспознан : ", tt)
 			}
+
 			//...
 		case xml.EndElement:
-			fmt.Println("EndElement", t)
+			if up[len(up)-1] != tt.Name {fmt.Println("EndElementОшибка", up[len(up)],t)} // Вообще-то закрытие проверает сам декодер
+			up=up[:len(up)-1]
+			//fmt.Println("EndElement", t,up)
+		case xml.CharData:
+			//fmt.Println("TEXT", tt) // Тут нужна проверка что это только концы строк и пробелы
+		case xml.ProcInst:
+			//fmt.Println("ProcInst", tt, string(tt.Inst))  // Тоже проверка
+
+		case xml.Comment:
+			fmt.Println("ERR-COMMENT", tt)
+		case xml.Directive:
+			fmt.Println("ERR-Directive", tt)
+		default:
+			fmt.Println("ERR", t)
 		}
+
+		buf, err := xml.MarshalIndent(&res,"", "   ")
+		if err != nil {
+			log.Fatal(err)
+		}
+		_=buf
+		//	fmt.Println(string(buf))
 	}
-	//fmt.Printf("%+v\n", res)
-	//fmt.Printf("%+v\n", res1)
+	fmt.Printf("%+v\n", DictSeq)
+	fmt.Printf("%+v\n", DictDesc)
 }
