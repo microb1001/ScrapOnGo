@@ -14,7 +14,6 @@ type RdfType struct {
 }
 
 type DescriptionType struct {
-	//XMLName xml.Name `xml:"http://www.w3.org/1999/02/22-rdf-syntax-ns# Description"`
 	About   string     `xml:"RDF:about,attr"`
 	Id      string     `xml:"NS2:id,attr"`
 	Type    string     `xml:"NS2:type,attr"`
@@ -24,6 +23,7 @@ type DescriptionType struct {
 	Icon    string     `xml:"NS2:icon,attr"`
 	Source  string     `xml:"NS2:source,attr"`
 }
+
 type UrnType string
 
 var DictDesc map[UrnType] DescriptionType = make(map[UrnType] DescriptionType)
@@ -55,10 +55,10 @@ var TnSo=xml.Name{SpaceNS1,"source"}
 var TnRe=xml.Name{SpaceRDF,"resource"}
 
 func main() {
-	xmlFile, errOs := os.Open("scrapbook.rdf")
-	if errOs != nil { fmt.Println(errOs)}
+	xmlFile, err := os.Open("scrapbook.rdf")
+	if err != nil { fmt.Println(err)}
+
 	defer xmlFile.Close()
-	//byteValue, _ := ioutil.ReadAll(xmlFile)
 
 	decoder := xml.NewDecoder(xmlFile)
 	var up  = []xml.Name{TnNil}
@@ -96,19 +96,15 @@ func main() {
 				if tt.Attr[0].Name!=TnAb {fmt.Println("Ошибка Seq: ", tt)}
 				urnSeq=UrnType(tt.Attr[0].Value)
 				if len(DictSeq[urnSeq])!=0 {fmt.Println("Дублирование Seq: ", tt)}
-
 			case Name_x2{TnSe,TnLi,1}:
 				if tt.Attr[0].Name!=TnRe {fmt.Println("Ошибка Li: ", tt)}
 				DictSeq[urnSeq]=append(DictSeq[urnSeq], UrnType(tt.Attr[0].Value))
 			default:
-			fmt.Println("Нераспознан : ", tt)
+				fmt.Println("Нераспознан : ", tt)
 			}
-
-			//...
 		case xml.EndElement:
 			if up[len(up)-1] != tt.Name {fmt.Println("EndElementОшибка", up[len(up)],t)} // Вообще-то закрытие проверает сам декодер
 			up=up[:len(up)-1]
-			//fmt.Println("EndElement", t,up)
 		case xml.CharData:
 			//fmt.Println("TEXT", tt) // Тут нужна проверка что это только концы строк и пробелы
 		case xml.ProcInst:
