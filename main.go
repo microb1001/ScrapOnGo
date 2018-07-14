@@ -4,24 +4,19 @@ import (
 	"encoding/xml"
 	"fmt"
 	"os"
-	"log"
 	"io"
+	"log"
 )
-
-type RdfType struct {
-	XMLName      xml.Name          `xml:"RDF:RDF"`
-	Descriptions []DescriptionType `xml:"RDF:Description"`
-}
 
 type DescriptionType struct {
 	About   string     `xml:"RDF:about,attr"`
-	Id      string     `xml:"NS2:id,attr"`
-	Type    string     `xml:"NS2:type,attr"`
-	Title   string     `xml:"NS2:title,attr"`
-	Chars   string     `xml:"NS2:chars,attr"`
-	Comment string     `xml:"NS2:comment,attr"`
-	Icon    string     `xml:"NS2:icon,attr"`
-	Source  string     `xml:"NS2:source,attr"`
+	Id      string     `xml:"NS1:id,attr"`
+	Type    string     `xml:"NS1:type,attr"`
+	Title   string     `xml:"NS1:title,attr"`
+	Chars   string     `xml:"NS1:chars,attr"`
+	Comment string     `xml:"NS1:comment,attr"`
+	Icon    string     `xml:"NS1:icon,attr"`
+	Source  string     `xml:"NS1:source,attr"`
 }
 
 type UrnType string
@@ -31,7 +26,6 @@ var DictSeq map[UrnType] []UrnType = make(map[UrnType] []UrnType)
 
 type Name_x2 struct{old xml.Name;new xml.Name;attricnt int}
 
-var res RdfType
 var urnSeq UrnType = "ERR"
 
 // Пространства имен
@@ -53,7 +47,7 @@ var TnCo=xml.Name{SpaceNS1,"comment"}
 var TnIc=xml.Name{SpaceNS1,"icon"}
 var TnSo=xml.Name{SpaceNS1,"source"}
 var TnRe=xml.Name{SpaceRDF,"resource"}
-
+var ProcInst xml.ProcInst
 func main() {
 	xmlFile, err := os.Open("scrapbook.rdf")
 	if err != nil { fmt.Println(err)}
@@ -108,6 +102,7 @@ func main() {
 		case xml.CharData:
 			//fmt.Println("TEXT", tt) // Тут нужна проверка что это только концы строк и пробелы
 		case xml.ProcInst:
+			ProcInst=tt.Copy()
 			//fmt.Println("ProcInst", tt, string(tt.Inst))  // Тоже проверка
 
 		case xml.Comment:
@@ -118,13 +113,63 @@ func main() {
 			fmt.Println("ERR", t)
 		}
 
-		buf, err := xml.MarshalIndent(&res,"", "   ")
-		if err != nil {
-			log.Fatal(err)
-		}
-		_=buf
-		//	fmt.Println(string(buf))
+
 	}
-	fmt.Printf("%+v\n", DictSeq)
-	fmt.Printf("%+v\n", DictDesc)
+	//fmt.Printf("%+v\n", DictSeq)
+	//fmt.Printf("%+v\n", DictDesc)
+	xmlFile2, err := os.Create("scrapbookout.rdf")
+	if err != nil { fmt.Println(err)}
+
+	defer xmlFile2.Close()
+
+	encoder := xml.NewEncoder(xmlFile2)
+	encoder.Indent("", "  ")
+//============================типы только для оформления вывода в XML=================================
+	type li2Type struct {
+		Urn UrnType `xml:"RDF:resource,attr"`
+	}
+	type Seq1Type struct {
+		Urn UrnType `xml:"RDF:about,attr"`
+		Li [] li2Type `xml:"RDF:li"`
+	}
+	type Scrap0Type struct {
+		XMLName      xml.Name          `xml:"RDF:RDF"`
+		Descriptions []DescriptionType `xml:"RDF:Description"`
+		Seq []Seq1Type                 `xml:"RDF:Seq"`
+		NameSpaceNS1 string		       `xml:"xmlns:NS1,attr"`
+		NameSpaceNC string		       `xml:"xmlns:NC,attr"`
+		NameSpaceRDF string		       `xml:"xmlns:RDF,attr"`
+	}
+	var res Scrap0Type
+//==========================================++++++++++++++++++=======================================
+	res.NameSpaceNS1=SpaceNS1
+	res.NameSpaceNC=SpaceNC
+	res.NameSpaceRDF=SpaceRDF
+
+	for _,v :=range DictDesc {
+		res.Descriptions=append(res.Descriptions,v)
+	}
+	for k,v :=range DictSeq {
+		var u Seq1Type
+		u.Urn=k
+		for _,m:=range v {
+			u.Li=append(u.Li,li2Type{Urn:m})
+		}
+		res.Seq=append(res.Seq,u)
+	}
+	err=encoder.EncodeToken(ProcInst)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err=encoder.Encode(&res)
+	if err != nil {
+		log.Fatal(err)
+	}
+	buf, err := xml.MarshalIndent(&res,"", "   ")
+	if err != nil {
+		log.Fatal(err)
+	}
+	_=buf
+	fmt.Println(string(buf))
+	//fmt.Printf("%+v\n", DictDesc)
 }
