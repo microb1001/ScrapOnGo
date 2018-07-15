@@ -10,20 +10,18 @@ import (
 
 type DescriptionType struct {
 	About   string     `xml:"RDF:about,attr"`
-	Id      string     `xml:"NS1:id,attr"`
-	Type    string     `xml:"NS1:type,attr"`
-	Title   string     `xml:"NS1:title,attr"`
-	Chars   string     `xml:"NS1:chars,attr"`
-	Comment string     `xml:"NS1:comment,attr"`
-	Icon    string     `xml:"NS1:icon,attr"`
-	Source  string     `xml:"NS1:source,attr"`
+	Id      string     `xml:"NS9:id,attr"`
+	Type    string     `xml:"NS9:type,attr"`
+	Title   string     `xml:"NS9:title,attr"`
+	Chars   string     `xml:"NS9:chars,attr"`
+	Comment string     `xml:"NS9:comment,attr"`
+	Icon    string     `xml:"NS9:icon,attr"`
+	Source  string     `xml:"NS9:source,attr"`
 }
 
 type UrnType string
-
 var DictDesc map[UrnType] DescriptionType = make(map[UrnType] DescriptionType)
 var DictSeq map[UrnType] []UrnType = make(map[UrnType] []UrnType)
-
 type Name_x2 struct{old xml.Name;new xml.Name;attricnt int}
 
 var urnSeq UrnType = "ERR"
@@ -36,6 +34,7 @@ const SpaceRDF="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 var TnNil=xml.Name{"",""}
 var TnRDF=xml.Name{SpaceRDF,"RDF"}
 var TnDe=xml.Name{SpaceRDF,"Description"}
+var TnBo=xml.Name{SpaceNC,"BookmarkSeparator"}
 var TnSe=xml.Name{SpaceRDF,"Seq"}
 var TnLi=xml.Name{SpaceRDF,"li"}
 var TnAb=xml.Name{SpaceRDF,"about"}
@@ -68,7 +67,7 @@ func main() {
 
 			switch cs {
 			case Name_x2{TnNil,TnRDF,3}:
-			case Name_x2{TnRDF,TnDe,8}:
+			case Name_x2{TnRDF,TnDe,8},Name_x2{TnRDF,TnBo,8}:
 				var urn UrnType
 				var ee DescriptionType
 				for _, a := range tt.Attr{
@@ -85,11 +84,15 @@ func main() {
 					}
 				}
 				if _,ok:=DictDesc[urn];ok {panic("Дубликат description "+string(urn))}
+				if (cs.new==TnBo) && (ee.Type!="separator"){panic("Тип неверен separator "+string(urn))}
+				if (cs.new!=TnBo) && (ee.Type=="separator"){panic("Сепаратор без сепаратора separator "+string(urn))}
 				DictDesc[urn]=ee
 			case Name_x2{TnRDF,TnSe,1}:
 				if tt.Attr[0].Name!=TnAb {fmt.Println("Ошибка Seq: ", tt)}
-				urnSeq=UrnType(tt.Attr[0].Value)
+				urnSeq= UrnType(tt.Attr[0].Value)
 				if len(DictSeq[urnSeq])!=0 {fmt.Println("Дублирование Seq: ", tt)}
+				//var ur []UrnType // почему то нельзя объединить со следующей строкой
+				DictSeq[urnSeq]=make([]UrnType, 0, 10)
 			case Name_x2{TnSe,TnLi,1}:
 				if tt.Attr[0].Name!=TnRe {fmt.Println("Ошибка Li: ", tt)}
 				DictSeq[urnSeq]=append(DictSeq[urnSeq], UrnType(tt.Attr[0].Value))
@@ -130,15 +133,16 @@ func main() {
 	}
 	type Seq1Type struct {
 		Urn UrnType `xml:"RDF:about,attr"`
-		Li [] li2Type `xml:"RDF:li"`
+		Li  [] li2Type    `xml:"RDF:li"`
 	}
 	type Scrap0Type struct {
-		XMLName      xml.Name          `xml:"RDF:RDF"`
+		XMLName      xml.Name                `xml:"RDF:RDF"`
 		Descriptions []DescriptionType `xml:"RDF:Description"`
-		Seq []Seq1Type                 `xml:"RDF:Seq"`
-		NameSpaceNS1 string		       `xml:"xmlns:NS1,attr"`
-		NameSpaceNC string		       `xml:"xmlns:NC,attr"`
-		NameSpaceRDF string		       `xml:"xmlns:RDF,attr"`
+		Separators []DescriptionType   `xml:"NC:BookmarkSeparator"`
+		Seq []Seq1Type                       `xml:"RDF:Seq"`
+		NameSpaceNS1 string                  `xml:"xmlns:NS9,attr"`
+		NameSpaceNC string                   `xml:"xmlns:NC,attr"`
+		NameSpaceRDF string                  `xml:"xmlns:RDF,attr"`
 	}
 	var res Scrap0Type
 //==========================================++++++++++++++++++=======================================
@@ -147,7 +151,10 @@ func main() {
 	res.NameSpaceRDF=SpaceRDF
 
 	for _,v :=range DictDesc {
+		if v.Type=="separator" {res.Separators=append(res.Separators,v)
+		} else {
 		res.Descriptions=append(res.Descriptions,v)
+		}
 	}
 	for k,v :=range DictSeq {
 		var u Seq1Type
@@ -170,6 +177,6 @@ func main() {
 		log.Fatal(err)
 	}
 	_=buf
-	fmt.Println(string(buf))
+	//fmt.Println(string(buf))
 	//fmt.Printf("%+v\n", DictDesc)
 }
