@@ -6,15 +6,18 @@ import (
 	"encoding/xml"
 	"log"
 	"io"
+	"io/ioutil"
+	"strings"
 )
 
 func LoadAll (fileName string) DictType {
 	var ScrapLoad DictType = DictType {
+		fileName,
 		make(map[UrnType] DescriptionType),
 		make(map[UrnType] []UrnType),
 		make([]xml.ProcInst,0)}
 	var urnSeq UrnType = "ERR"
-	xmlFile, err := os.Open(fileName)
+	xmlFile, err := os.Open(fileName+"/scrapbook.rdf")
 	if err != nil { fmt.Println(err); panic(err)}
 
 	defer xmlFile.Close()
@@ -33,6 +36,7 @@ func LoadAll (fileName string) DictType {
 
 			switch tokensPair {
 			case Name_x2{TnNil,TnRDF,3}: // Начало
+			case Name_x2{TnNil,TnRDF,2}: // Иногда два NameSpace
 
 			case Name_x2{TnRDF,TnDe,8},  // Дескриптор или сепаратор
 				 Name_x2{TnRDF,TnBo,8}:
@@ -92,7 +96,7 @@ func LoadAll (fileName string) DictType {
 }
 
 func SaveAll (fileName string, ScrapSave DictType ){
-	xmlFile2, err := os.Create(fileName)
+	xmlFile2, err := os.Create(fileName+"/scrapbookout.rdf")
 	if err != nil { fmt.Println(err)}
 
 	defer xmlFile2.Close()
@@ -112,7 +116,7 @@ func SaveAll (fileName string, ScrapSave DictType ){
 		Descriptions []DescriptionType `xml:"RDF:Description"`
 		Separators []DescriptionType   `xml:"NC:BookmarkSeparator"`
 		Seq []Seq1Type                       `xml:"RDF:Seq"`
-		NameSpaceNS1 string                  `xml:"xmlns:NS9,attr"`
+		NameSpaceNS1 string                  `xml:"xmlns:NS1,attr"`
 		NameSpaceNC string                   `xml:"xmlns:NC,attr"`
 		NameSpaceRDF string                  `xml:"xmlns:RDF,attr"`
 	}
@@ -146,5 +150,44 @@ func SaveAll (fileName string, ScrapSave DictType ){
 	err=encoder.Encode(&res)
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func Integrity (ScrapI DictType){
+	for _,a :=range (ScrapI.Desc){
+		if _, err := os.Stat(ScrapI.File+"/data/"+a.Id); os.IsNotExist(err) {
+			fmt.Printf("Нет папки data с Id: " + a.Id)
+		}
+		if _, err := os.Stat(ScrapI.File+"/data/"+a.Id+"/index.dat"); os.IsNotExist(err) {
+			fmt.Printf("Нет index.dat с Id: " + a.Id)
+		}
+		rawBytes, err := ioutil.ReadFile(ScrapI.File+"/data/"+a.Id+"/index.dat")
+		if err != nil {	log.Fatal(err)	}
+		text := string(rawBytes)
+
+		lines := strings.Split(text, "\n")
+		var b = DescriptionType{}
+		for _, line := range lines {
+			fields := strings.Split(line, "\t")
+			//fmt.Println(fields)
+			//fmt.Println(len(fields))
+			if len(fields) == 1 && fields[0]=="" {continue}
+			if len(fields) != 2 { fmt.Printf("Ошибка index.dat с Id: " + a.Id)
+			}
+			switch fields[0]{
+			case "id" : b.Id=fields[1]
+			case "type":b.Type=fields[1]
+			case "title":b.Title=fields[1]
+			case "chars":b.Chars=fields[1]
+
+			case "icon":b.Icon=a.Icon // проверка иконок отключена - ссылки разные, и потеря иконок в целом незначима
+			case "source":b.Source=fields[1]
+			case "comment":b.Comment=fields[1]
+			default: panic("Неизвестное поле: " + fields[0]+" со значением: "+fields[1])
+			}
+		//strings.TrimSpace(fields[1])
+		}
+		b.About=a.About // Нет такого поля в b
+		if a!=b {fmt.Printf("Неодинаковые поля: ",a,b); panic("Неодинаковые поля id:"+a.Id)}
 	}
 }

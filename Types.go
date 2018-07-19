@@ -4,17 +4,18 @@ import "encoding/xml"
 
 type DescriptionType struct {
 	About   string     `xml:"RDF:about,attr"`
-	Id      string     `xml:"NS9:id,attr"`
-	Type    string     `xml:"NS9:type,attr"`
-	Title   string     `xml:"NS9:title,attr"`
-	Chars   string     `xml:"NS9:chars,attr"`
-	Comment string     `xml:"NS9:comment,attr"`
-	Icon    string     `xml:"NS9:icon,attr"`
-	Source  string     `xml:"NS9:source,attr"`
+	Id      string     `xml:"NS1:id,attr"`
+	Type    string     `xml:"NS1:type,attr"`
+	Title   string     `xml:"NS1:title,attr"`
+	Chars   string     `xml:"NS1:chars,attr"`
+	Comment string     `xml:"NS1:comment,attr"`
+	Icon    string     `xml:"NS1:icon,attr"`
+	Source  string     `xml:"NS1:source,attr"`
 }
 
 type UrnType string
 type DictType struct {
+	File string
 	Desc map[UrnType] DescriptionType    // = make(map[UrnType] DescriptionType)
 	Seq map[UrnType] []UrnType   // = make(map[UrnType] []UrnType)
 	ProcInst []xml.ProcInst // <? xml version?>
